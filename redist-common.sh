@@ -97,7 +97,7 @@ decide_elks_libc_ver_and_dirs () {
     el_uver="$el_uver~pre$el_uver4"
   fi
   el_date="`cd elks && git log -n1 --oneline --date=iso-strict-local \
-    --format='%ad' | sed 's/-//g; s/:.*$//g; s/T/./g'`"
+    --format='%ad' | sed 's/-//g; s/\(:.\).:.*$/\1/; s/[T:]/./g'`"
   [ -n "$el_uver" -a -n "$el_date" ]
   # Include the GCC and binutils versions inside the elks-libc version.
   el_ver="$el_uver"-"$el_date"-stage1gcc"$gcc_ver"-binutils"$bu_ver"
@@ -127,7 +127,7 @@ decide_elksemu_ver_and_dirs () {
     ee_uver=0.6.0.0
   fi
   ee_date="`cd elks && git log -n1 --oneline --date=iso-strict-local \
-    --format='%ad' | sed 's/-//g; s/:.*$//g; s/T/./g'`"
+    --format='%ad' | sed 's/-//g; s/\(:.\).:.*$/\1/; s/[T:]/./g'`"
   [ -n "$ee_uver" -a -n "$ee_date" ]
   ee_ver="$ee_uver"-"$ee_date"
   ee_pver="$ee_ver"-ppa"$ppa_no~$distro"
