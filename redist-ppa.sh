@@ -424,6 +424,7 @@ if in_list libi86 BUILDLIST; then
   decide_gcc_ver_and_dirs
   decide_newlib_ver_and_dirs
   decide_libi86_ver_and_dirs
+  mkdir -p redist-ppa/"$distro"
   cp -a libi86 redist-ppa/"$distro"/"$li_pdir"
   pushd redist-ppa/"$distro"/"$li_pdir"
   git clean -f -x
