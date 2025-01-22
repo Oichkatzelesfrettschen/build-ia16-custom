@@ -74,6 +74,7 @@ then
     wget https://gcc.gnu.org/pub/gcc/infrastructure/isl-0.16.1.tar.bz2
     tar -xjf isl-0.16.1.tar.bz2
 fi
+do_git_clone elks "${1-gitlab.com}" tkchia/elks.git "$2"
 do_git_clone causeway "${1-gitlab.com}" tkchia/causeway.git "$2"
 do_git_clone libi86 "${1-gitlab.com}" tkchia/libi86.git "$2"
 # ^- GitLab, not GitHub!
