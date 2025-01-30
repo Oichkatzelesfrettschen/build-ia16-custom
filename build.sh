@@ -158,13 +158,22 @@ else
   EXTRABUILD2OPTS=
 fi
 
+# The i586-pc-msdosdjgpp-gcc (Linux → DOS 32-bit DPMI) toolchain targets the
+# Pentium (i586) by default.  Add compiler flags to get it to target the
+# i386 & refrain from emitting i486- or i586-specific instructions.
+CFLAGSDJGPP="-march=i386 -O2"
+CXXFLAGSDJGPP="-march=i386 -O2"
+EXTRABUILDOPTSDJGPP=("CFLAGS=$CFLAGSDJGPP" "CXXFLAGS=$CXXFLAGSDJGPP")
+# And...
 if $WITHCXXDJGPP; then
   LANGUAGESDJGPP="c,c++"
-  EXTRABUILD2OPTSDJGPP="--with-newlib --disable-libstdcxx-dual-abi ` \
-    `--disable-extern-template --disable-wchar_t --disable-libstdcxx-verbose"
+  EXTRABUILD2OPTSDJGPP=( \
+    "${EXTRABUILDOPTSDJGPP[@]}" "--with-newlib" \
+    "--disable-libstdcxx-dual-abi" "--disable-extern-template" \
+    "--disable-wchar_t" "--disable-libstdcxx-verbose")
 else
   LANGUAGESDJGPP="c"
-  EXTRABUILD2OPTSDJGPP=
+  EXTRABUILD2OPTSDJGPP=("${EXTRABUILDOPTSDJGPP[@]}")
 fi
 
 BIN=$HERE/prefix/bin
@@ -884,7 +893,8 @@ if in_list prereqs-djgpp BUILDLIST; then
   # super-humongous integers, so we can disable the use of FFT...
   ../gmp-6.1.2/configure --target=i586-pc-msdosdjgpp \
     --host=i586-pc-msdosdjgpp --prefix="$PREFIX-djgpp-prereqs" \
-    --disable-shared --disable-fft 2>&1 | tee build.log
+    --disable-shared --disable-fft "${EXTRABUILDOPTSDJGPP[@]}" 2>&1 \
+    | tee build.log
   cont_build_log "make $PARALLEL"
   cont_build_log "make $PARALLEL install"
   popd
@@ -894,7 +904,8 @@ if in_list prereqs-djgpp BUILDLIST; then
   pushd build-mpfr-djgpp
   ../mpfr-3.1.5/configure --target=i586-pc-msdosdjgpp \
     --host=i586-pc-msdosdjgpp --prefix="$PREFIX-djgpp-prereqs" \
-    --with-gmp="$PREFIX-djgpp-prereqs" --disable-shared 2>&1 | tee build.log
+    --with-gmp="$PREFIX-djgpp-prereqs" --disable-shared \
+    "${EXTRABUILDOPTSDJGPP[@]}" 2>&1 | tee build.log
   cont_build_log "make $PARALLEL"
   cont_build_log "make $PARALLEL install"
   popd
@@ -905,7 +916,7 @@ if in_list prereqs-djgpp BUILDLIST; then
   ../mpc-1.0.3/configure --target=i586-pc-msdosdjgpp \
     --host=i586-pc-msdosdjgpp --prefix="$PREFIX-djgpp-prereqs" \
     --with-gmp="$PREFIX-djgpp-prereqs" --with-mpfr="$PREFIX-djgpp-prereqs" \
-    --disable-shared 2>&1 | tee build.log
+    --disable-shared "${EXTRABUILDOPTSDJGPP[@]}" 2>&1 | tee build.log
   cont_build_log "make $PARALLEL"
   cont_build_log "make $PARALLEL install"
   popd
@@ -915,8 +926,8 @@ if in_list prereqs-djgpp BUILDLIST; then
   pushd build-isl-djgpp
   ../isl-0.16.1/configure --target=i586-pc-msdosdjgpp \
     --host=i586-pc-msdosdjgpp --prefix="$PREFIX-djgpp-prereqs" \
-    --disable-shared --with-gmp-prefix="$PREFIX-djgpp-prereqs" 2>&1 | \
-    tee build.log
+    --disable-shared --with-gmp-prefix="$PREFIX-djgpp-prereqs" \
+    "${EXTRABUILDOPTSDJGPP[@]}" 2>&1 | tee build.log
   cont_build_log "make $PARALLEL"
   cont_build_log "make $PARALLEL install"
   popd
@@ -1036,7 +1047,8 @@ if in_list binutils-djgpp BUILDLIST; then
     --localedir="$PREFIX-djgpp"/ia16-elf/locale \
     $BINUTILSOPTS --disable-libctf --disable-gdb --disable-libdecnumber \
     --disable-readline --disable-sim --disable-nls --disable-plugins \
-    --disable-lto --disable-werror 2>&1 | tee build.log
+    --disable-lto --disable-werror "${EXTRABUILDOPTSDJGPP[@]}" 2>&1 \
+    | tee build.log
   # The binutils include a facility to allow `ar' and `ranlib' to be invoked
   # as the same executable, and likewise for `objcopy' and `strip'.  However,
   # this facility is disabled in the source.  Do a hack to re-enable it.
@@ -1108,7 +1120,8 @@ if in_list elf2elks-djgpp BUILDLIST; then
   start_build_log ". env.sh && make defconfig"
   cont_build_log ". env.sh && cd elks/tools/elf2elks && make doclean"
   cont_build_log ". env.sh && cd elks/tools/elf2elks && \
-		  make CC='i586-pc-msdosdjgpp-gcc -I$HERE/djgpp-fdos-pkging \
+		  make CC='i586-pc-msdosdjgpp-gcc $CFLAGSDJGPP \
+			   -I$HERE/djgpp-fdos-pkging \
 			   -DLIBELF_ARCH=EM_386 -DLIBELF_BYTEORDER=ELFDATA2LSB\
 			   -DLIBELF_CLASS=ELFCLASS32 -DELFTC_VCSID\(id\)= \
 			   -DS_ISSOCK\(mode\)=0 -Droundup2=roundup \
@@ -1144,7 +1157,7 @@ if in_list gcc-djgpp BUILDLIST; then
     --disable-libquadmath --disable-nls --disable-plugin --disable-lto \
     --enable-languages=$LANGUAGESDJGPP --with-gmp="$PREFIX-djgpp-prereqs" \
     --with-mpfr="$PREFIX-djgpp-prereqs" --with-mpc="$PREFIX-djgpp-prereqs" \
-    $EXTRABUILD2OPTSDJGPP --with-isl="$PREFIX-djgpp-prereqs" 2>&1 \
+    "${EXTRABUILD2OPTSDJGPP[@]}" --with-isl="$PREFIX-djgpp-prereqs" 2>&1 \
     | tee build.log
   # `-Wno-narrowing' suppresses this error at configuration time (for now):
   #	"checking whether byte ordering is bigendian... unknown
