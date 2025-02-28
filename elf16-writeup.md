@@ -208,14 +208,14 @@ A script for producing a CauseWay DOS extender `3P` executable, with separate te
 
 <sup>[6] Intel Corporation.  _iAPX 286 Programmer's Reference Manual_.  1983.</sup>
 
-<sup>[7] [`https://github.com/FDOS/kernel`](https://github.com/FDOS/kernel)
+<sup>[7] [`https://github.com/FDOS/kernel`](https://github.com/FDOS/kernel).</sup>
 
-<sup>[8] [`https://github.com/jbruchon/elks`](https://github.com/jbruchon/elks)
+<sup>[8] [`https://github.com/jbruchon/elks`](https://github.com/jbruchon/elks).</sup>
 
-<sup>[9] H. P. Anvin.  ABI for 16-bit real mode segmented code in ELF.  2019.  [`https://git.zytor.com/users/hpa/segelf/abi.git/plain/segelf.txt`](https://git.zytor.com/users/hpa/segelf/abi.git/plain/segelf.txt)</sup>
+<sup>[9] H. P. Anvin.  ABI for 16-bit real mode segmented code in ELF.  2019.  [`https://git.zytor.com/users/hpa/segelf/abi/tree/segelf.txt`](https://git.zytor.com/users/hpa/segelf/abi/tree/segelf.txt).</sup>
 
-<sup>[10] H. P. Anvin wrote at [`https://bugzilla.nasm.us/show_bug.cgi?id=3392533`](https://bugzilla.nasm.us/show_bug.cgi?id=3392533), "it probably would involve creating a new section (say '`section~`' or '`~group`') that would sort at the _end_ of the relevant segment".  However, I think using `&` rather than `~` as a "sigil" works better — the sigil should sort lexicographically _before_ "normal" symbol characters such as `.`, digits, and letters.
+<sup>[10] H. P. Anvin wrote at [`https://bugzilla.nasm.us/show_bug.cgi?id=3392533`](https://bugzilla.nasm.us/show_bug.cgi?id=3392533), "it probably would involve creating a new section (say '`section~`' or '`~group`') that would sort at the _end_ of the relevant segment".  However, I think using `&` rather than `~` as a "sigil" works better — the sigil should sort lexicographically _before_ "normal" symbol characters such as `.`, digits, and letters.</sup>
 
 <sup>[11] Intel Corporation.  _Intel® 64 and IA-32 Architectures Software Developer’s Manual_.  _Volume 3B: System Programming Guide, Part 2_.  May 2019.  Chapter 20.</sup>
 
-<sup>[12] See Ralf Brown's Interrupt List ([`www.cs.cmu.edu/afs/cs.cmu.edu/user/ralf/pub/WWW/files.html`](http://www.cs.cmu.edu/afs/cs.cmu.edu/user/ralf/pub/WWW/files.html)) on `int 0x21`, `ah = 0x4b`.
+<sup>[12] See Ralf Brown's Interrupt List ([`www.cs.cmu.edu/afs/cs.cmu.edu/user/ralf/pub/WWW/files.html`](http://www.cs.cmu.edu/afs/cs.cmu.edu/user/ralf/pub/WWW/files.html)) on `int 0x21`, `ah = 0x4b`.</sup>
