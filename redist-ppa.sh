@@ -83,6 +83,8 @@ if [ "${#BUILDLIST}" -eq 0 ]; then
   echo "redist-ppa options:"
   echo "--distro={trusty|xenial|...} clean stubs binutils gcc1 newlib" \
        "causeway elks-libc elksemu libi86 gcc2"
+  echo
+  echo "to produce signed packages, set \$DEBSIGN_KEYID to an OpenPGP key id"
   exit 1
 fi
 

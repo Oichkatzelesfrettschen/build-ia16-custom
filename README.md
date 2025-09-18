@@ -39,9 +39,18 @@
             ▾  ./redist-ppa.sh all        ./redist-djgpp.sh all
           «END» ◂─────────┴◂──────────────────────┘
 
+### Using `build.sh`
+
   * The Linux-hosted toolchain will be installed in the `prefix/` subdirectory under this top-level directory.  To use the newly-built toolchain, you can add ...`/prefix/bin` to your `$PATH`.
   * The DJGPP-hosted toolchain — if any — will appear under `prefix-djgpp/`.
   * You can specify multiple build stages together when running `build.sh`.  E.g., `./build.sh binutils prereqs gcc1`.
+
+### Using `redist-ppa.sh`
+
+  * `redist-ppa.sh` produces Ubuntu source package bundles in the `redist-ppa/` directory.
+  * Each package bundle comprises several files which are tied together by a `.changes` file.  You can (e.g.) pass the names of the `.changes` files to [`dput`](https://manpages.ubuntu.com/manpages/noble/en/man1/dput.1.html) to upload the source bundles to Ubuntu Launchpad.
+  * You probably want to define the environment variable `$DEBSIGN_KEYID` to an OpenPGP key id to use, before running `redist-ppa.sh`.
+  * You can target a specific Ubuntu distribution by passing a `--distro=` option.  On default, `redist-ppa.sh` targets the Ubuntu distribution which it is running on.
 
 ### Pre-compiled compiler toolchain packages
 
