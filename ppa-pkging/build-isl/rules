@@ -1,0 +1,17 @@
+#!/usr/bin/make -f
+
+export DH_VERBOSE = 1
+DESTDIR ?= $(abspath debian/libisl14-dev)
+export CFLAGS = -g -O2
+
+our_host_platform := $(shell $(CC) -dumpmachine || uname -p || arch)
+
+%:
+	exec dh $@ --parallel --builddirectory=build
+
+override_dh_update_autotools_config:
+	# Nope, do not touch config.sub or config.guess .
+
+override_dh_auto_configure:
+	# See redist-ppa.sh .
+	exec dh_auto_configure -O--parallel -- --disable-shared

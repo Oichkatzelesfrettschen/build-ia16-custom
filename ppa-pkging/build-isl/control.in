@@ -1,0 +1,13 @@
+Source: libisl14-dev
+Section: devel
+Priority: optional
+Maintainer: TK Chia <tkchia@gmx.com>
+Build-Depends: debhelper (>= 9), quilt, python3:any, libgmp-dev
+Standards-Version: 3.9.6
+Homepage: https://openhub.net/p/isl
+
+Package: libisl14-dev
+Architecture: any
+Conflicts: libisl-dev
+Depends: libgmp-dev, ${shlibs:Depends}, ${misc:Depends}
+Description: Old version of Integer Set Library (libisl)

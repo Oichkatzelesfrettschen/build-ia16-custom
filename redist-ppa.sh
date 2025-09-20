@@ -61,12 +61,13 @@ ensure_prog () {
 distro=
 while [ $# -gt 0 ]; do
   case "$1" in
-    clean|stubs|binutils|gcc1|newlib|causeway|elks-libc|elksemu|libi86|gcc2)
+    clean | stubs | binutils | isl | gcc1 | newlib | causeway \
+     | elks-libc | elksemu | libi86 | gcc2)
       BUILDLIST=( "${BUILDLIST[@]}" $1 )
       ;;
     all)
-      BUILDLIST=("clean" "stubs" "binutils" "gcc1" "newlib" "causeway" \
-		 "elks-libc" "elksemu" "libi86" "gcc2")
+      BUILDLIST=("clean" "stubs" "binutils" "isl" "gcc1" "newlib" \
+		 "causeway" "elks-libc" "elksemu" "libi86" "gcc2")
       ;;
     --distro=?*)
       distro="${1#--distro=}"
@@ -81,10 +82,13 @@ done
 
 if [ "${#BUILDLIST}" -eq 0 ]; then
   echo "redist-ppa options:"
-  echo "--distro={trusty|xenial|...} clean stubs binutils gcc1 newlib" \
+  echo "--distro={trusty|xenial|...} clean stubs binutils isl gcc1 newlib" \
        "causeway elks-libc elksemu libi86 gcc2"
   echo
-  echo "to produce signed packages, set \$DEBSIGN_KEYID to an OpenPGP key id"
+  echo "NOTES:"
+  echo "- to produce signed packages, set \$DEBSIGN_KEYID to an OpenPGP key id"
+  echo "- an extra package for isl is only needed when targeting new Ubuntu"
+  echo "  distros such as Noble (24.04)"
   exit 1
 fi
 
@@ -231,6 +235,36 @@ if in_list binutils BUILDLIST; then
   #	whatever name and e-mail address is in the changelog to serve as the
   #	key id.  So work around this.
   debuild -i'.*' -S -rfakeroot -d ${signing[@]}
+  popd
+fi
+
+if in_list isl BUILDLIST; then
+  echo
+  echo "***********************"
+  echo "* Packaging isl 0.14+ *"
+  echo "***********************"
+  echo
+  rm -rf redist-ppa/"$distro"/libisl14-dev_*
+  decide_isl_ver_and_dirs
+  mkdir -p redist-ppa/"$distro"/"$isl_pdir"
+  cp isl-"$isl_ver".tar.bz2 redist-ppa/"$distro"/"$isl_dir".orig.tar.bz2
+  pushd redist-ppa/"$distro"/"$isl_pdir"
+  dh_make -s -p "$isl_pdir" -n -f ../"$isl_dir".orig.tar.bz2 -y
+  rm -f debian/*.ex debian/*.EX debian/README debian/README.*
+  cp -a ../../../ppa-pkging/build-isl/* debian/
+  sed "s|@isl_ver@|$isl_ver|g" debian/control.in >debian/control
+  rm debian/control.in
+  find debian -name '*~' -print0 | xargs -0 rm -f
+  (
+    echo "libisl14-dev ($isl_pver) $distro; urgency=medium"
+    echo
+    echo '  * Release.'
+    echo
+    echo " -- user <user@localhost.localdomain>  $curr_tm"
+  ) >debian/changelog
+  cp -a debian/docs debian/*.docs
+  debuild -i'.*' -S -rfakeroot -d ${signing[@]}
+  cd ..
   popd
 fi
 

@@ -20,6 +20,13 @@ decide_binutils_ver_and_dirs () {
   bu_pdir=binutils-ia16-elf"$1"_"$bu_pver"
 }
 
+decide_isl_ver_and_dirs () {
+  isl_ver=0.16.1
+  isl_pver="$isl_ver"-ppa"$ppa_no~$distro"
+  isl_dir=libisl14-dev_"$isl_ver"
+  isl_pdir=libisl14-dev_"$isl_pver"
+}
+
 decide_gcc_ver_and_dirs () {
   # $gcc_uver is the GNU upstream version number, and $gcc_date is our
   # downstream commit date.
@@ -30,6 +37,9 @@ decide_gcc_ver_and_dirs () {
   gcc_ver="$gcc_uver"-"$gcc_date"
   # Messy temporary hack to work around a Launchpad restriction...
   if [ 20180915.16 = "$gcc_date" ]; then
+    gcc_ver="$gcc_ver.2"
+  fi
+  if [ 20240218.17 = "$gcc_date" ] && [ noble = "$distro" ] ; then
     gcc_ver="$gcc_ver.2"
   fi
   gcc_pver="$gcc_ver"-ppa"$ppa_no~$distro"

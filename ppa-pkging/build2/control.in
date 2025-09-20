@@ -4,12 +4,13 @@ Priority: optional
 Maintainer: TK Chia <tkchia@gmx.com>
 Build-Depends: debhelper (>=9), binutils-ia16-elf@ifstatic@ (>= @bu_ver@),
  libnewlib-ia16-elf (>= @nl_ver@), autotools-dev, gcc (>= 4), g++ (>= 4),
- libc6-dev, texinfo, bison, flex, libisl-dev (>= 0.14), libmpc-dev (>= 0.8.1),
+ libc6-dev, texinfo, bison, flex, libisl14-dev | libisl-dev (>= 0.14),
+ libisl14-dev | libisl-dev (<< 0.17), libmpc-dev (>= 0.8.1),
  libmpfr-dev (>= 2.4.2), libgmp-dev (>= 4.3.2), gettext, dejagnu, quilt,
  python3:any, file, lsb-release, zlib1g-dev
 Standards-Version: 3.9.6
-Homepage: https://github.com/tkchia/gcc-ia16
-Vcs-Git: https://github.com/tkchia/gcc-ia16.git
+Homepage: https://gitlab.com/tkchia/gcc-ia16
+Vcs-Git: https://gitlab.com/tkchia/gcc-ia16.git
 
 Package: gcc-ia16-elf@ifstatic@
 Architecture: any
@@ -24,4 +25,4 @@ Description: GNU C and C++ compilers for ia16-elf target
  .
  This is based on the sources of Jenner et al.'s toolchain for IA-16 (see
  https://sourcery.mentor.com/GNUToolchain/subscription57091?cmpid=11885,
- https://github.com/tkchia/build-ia16/, https://github.com/tkchia/gcc-ia16).
+ https://gitlab.com/tkchia/build-ia16/, https://gitlab.com/tkchia/gcc-ia16).
