@@ -1,6 +1,8 @@
 # build-ia16-custom
 
-Custom fork of the IA-16 toolchain build system with modern Makefile-based construction.
+Custom fork of TK Chia’s `build-ia16` scripts. In this workspace it is kept mainly for
+reference and for upstream-style scripted builds (`build.sh`), while the primary build
+entrypoint is the repo-root `Makefile` (which builds the custom toolchain forks).
 
 ## Upstream
 
@@ -10,46 +12,29 @@ Custom fork of the IA-16 toolchain build system with modern Makefile-based const
 
 ## Modifications
 
-This fork replaces the original `build.sh` script with a proper Makefile-based build system:
+This fork carries local tweaks to better fit this mono-repo layout and the “external tests”
+policy (ELKS/emulators/demos live outside the repo under `IA16_EXTERNAL_TESTS`).
 
-### Why Makefile Instead of build.sh
+## Building (recommended)
 
-- **Dependency tracking** - Automatic detection of what needs rebuilding
-- **Parallel builds** - Proper `-j` support across all stages
-- **Reproducibility** - Deterministic build order and flags
-- **Standard interface** - Familiar `make`, `make install`, `make clean`
-- **Integration** - Works with PKGBUILDs and CI/CD pipelines
-
-### Build Stages
-
-1. **binutils** - Assembler, linker, and binary utilities
-2. **gcc-stage1** - Bootstrap C compiler (no libc)
-3. **newlib** - C library (requires stage1 gcc)
-4. **gcc-stage2** - Full C compiler with libc support
-
-## Building
-
-### Using Master Makefile
+Use the repo-root `Makefile` to build the custom forks:
 
 ```bash
-cd ~/Playground/ia16
-make -f Makefile all PREFIX=$HOME/.local/ia16
+REPO="${IA16_REPO:-$HOME/Playground/ia16}"
+cd "$REPO"
+make all PREFIX=$HOME/.local/ia16 IA16_WERROR=1
 ```
 
-### Using PKGBUILDs (Arch Linux)
-
-```bash
-cd ~/pkgbuilds/ia16-toolchain
-make all
-```
-
-## Build Order
-
-The Makefile enforces proper build order:
+Build order:
 
 ```
 binutils -> gcc-stage1 -> newlib -> gcc-stage2
 ```
+
+## Building (scripted upstream flow)
+
+`build.sh` is still present for upstream-style scripted builds. See `build-ia16-custom/README.md`
+for the stage list and notes about optional external runtime stages.
 
 ## Configuration
 
@@ -58,8 +43,22 @@ Key variables (can be overridden):
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `PREFIX` | `~/.local/ia16` | Installation prefix |
-| `PARALLEL` | `-j$(nproc)` | Parallel job count |
 | `TARGET` | `ia16-elf` | Target triplet |
+| `IA16_EXTERNAL_TESTS` | unset | Optional external tests root |
+| `IA16_HOST_CXXSTD` | `-std=gnu++11` | Host C++ standard for GCC 6.3 cross builds (avoid relying on modern-default C++17) |
+
+## Dependencies
+
+This repo’s canonical dependency list lives in the workspace root:
+- `REQUIREMENTS.md`
+
+If you use `build-ia16-custom/build.sh` directly (instead of the repo-root `Makefile`), you may need extra host tools beyond the “core toolchain” set:
+- Autotools helpers: `autoconf`, `automake`, `autogen`, `m4`
+- Test harness: `dejagnu`, `expect`
+- Packaging helpers (optional): `zip`, `xz`, plus distro-specific packaging tooling (see `REQUIREMENTS.md`)
+
+External runtimes/emulators (ELKS, bochs/86box, etc.) are intentionally **out-of-repo** and manual-only;
+if you build those stages, they should live under `$IA16_EXTERNAL_TESTS` (or explicitly configured paths).
 
 ## Syncing with Upstream
 

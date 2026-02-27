@@ -53,7 +53,6 @@ build1:linux:
     exclude:
       # Do not exclude ./libi86/.git --- we may use it to derive a version no.
       - ./*-ia16/.git
-      - ./elks/.git
     expire_in: 2h
 build2:linux:
   stage: build2
@@ -69,13 +68,11 @@ build2:linux:
       - ./86sim
     exclude:
       - ./*-ia16/.git
-      - ./elks/.git
     expire_in: 2h
 build3:linux:
   stage: build3
   script:
     - nice ./build.sh causeway
-    - nice ./build.sh elks-libc elksemu
     - nice ./build.sh libi86
     - MAKEFLAGS=-s nice ./build.sh gcc2
   timeout: 4h
@@ -87,7 +84,6 @@ build3:linux:
       - ./86sim
     exclude:
       - ./*-ia16/.git
-      - ./elks/.git
     expire_in: 2h
 build4:linux:
   stage: build4

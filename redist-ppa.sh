@@ -67,7 +67,7 @@ while [ $# -gt 0 ]; do
       ;;
     all)
       BUILDLIST=("clean" "stubs" "binutils" "isl" "gcc1" "newlib" \
-		 "causeway" "elks-libc" "elksemu" "libi86" "gcc2")
+		 "causeway" "libi86" "gcc2")
       ;;
     --distro=?*)
       distro="${1#--distro=}"
@@ -89,6 +89,8 @@ if [ "${#BUILDLIST}" -eq 0 ]; then
   echo "- to produce signed packages, set \$DEBSIGN_KEYID to an OpenPGP key id"
   echo "- an extra package for isl is only needed when targeting new Ubuntu"
   echo "  distros such as Noble (24.04)"
+  echo "- ELKS-related packages are optional; pass 'elks-libc'/'elksemu'"
+  echo "  explicitly (requires \$ELKS_DIR or \$IA16_EXTERNAL_TESTS)"
   exit 1
 fi
 
@@ -140,6 +142,7 @@ if in_list clean BUILDLIST; then
 fi
 
 . redist-common.sh
+resolve_elks_dir || true
 
 ensure_prog dh_make
 ensure_prog debuild
@@ -386,9 +389,9 @@ if in_list elks-libc BUILDLIST; then
   decide_gcc_ver_and_dirs
   decide_elks_libc_ver_and_dirs
   mkdir -p redist-ppa/"$distro"/"$el_pdir"
-  git -C elks ls-files -z | \
+  git -C "$ELKS_DIR" ls-files -z | \
     sed -z -n '/^\.git/! { /\/\.git/! p }' | \
-    (cd elks && \
+    (cd "$ELKS_DIR" && \
      tar cf - --no-recursion --null -T - --transform "s?^?$el_dir/?") | \
     xz -9v \
     >redist-ppa/"$distro"/"$el_dir".orig.tar.xz
@@ -422,9 +425,9 @@ if in_list elksemu BUILDLIST; then
   decide_elks_libc_ver_and_dirs
   decide_elksemu_ver_and_dirs
   mkdir -p redist-ppa/"$distro"/"$ee_pdir"
-  git -C elks ls-files -z | \
+  git -C "$ELKS_DIR" ls-files -z | \
     sed -z -n '/^\.git/! { /\/\.git/! p }' | \
-    (cd elks && \
+    (cd "$ELKS_DIR" && \
      tar cf - --no-recursion --null -T - --transform "s?^?$ee_dir/?") | \
     xz -9v \
     >redist-ppa/"$distro"/"$ee_dir".orig.tar.xz

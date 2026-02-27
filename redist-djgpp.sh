@@ -77,6 +77,7 @@ export TZ=UTC0
 date="`date +%Y-%m-%d`"
 
 . redist-common.sh
+resolve_elks_dir || true
 
 if in_list binutils BUILDLIST; then
   decide_binutils_ver_and_dirs
@@ -175,7 +176,7 @@ if false && in_list elks-libc BUILDLIST; then
     prog="`basename "$path" .exe | cut -c1-8`"
     echo 'devel\i16gnu\bin\'"$prog.exe" >redist-djgpp/links/"$prog.bat"
   done
-  git -C elks archive --format=zip --prefix=elks/ -0 -v HEAD \
+  git -C "$ELKS_DIR" archive --format=zip --prefix=elks/ -0 -v HEAD \
     >redist-djgpp/source/i16elklc/elks.zip
   rm -f redist-djgpp/i16elklc.zip
   (cd redist-djgpp && zip -9rkX i16elklc.zip appinfo devel links source)

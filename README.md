@@ -20,8 +20,6 @@
             ▾                       │
     ./build.sh causeway             │
             ▾                       │
-    ./build.sh elks-libc elf2elks   │
-            ▾                       │
     ./build.sh libi86 ────────────────────────────┐
             ▾                       │             ▾
     ./build.sh gcc2 ──────┐         │     ./build.sh clean-djgpp
@@ -44,6 +42,16 @@
   * The Linux-hosted toolchain will be installed in the `prefix/` subdirectory under this top-level directory.  To use the newly-built toolchain, you can add ...`/prefix/bin` to your `$PATH`.
   * The DJGPP-hosted toolchain — if any — will appear under `prefix-djgpp/`.
   * You can specify multiple build stages together when running `build.sh`.  E.g., `./build.sh binutils prereqs gcc1`.
+  * Optional external runtimes/tests (ELKS libc, elksemu, emulator builds) should live outside this repo.
+  * To build ELKS-related stages, set `IA16_EXTERNAL_TESTS` (preferred) or `ELKS_DIR`/`ELKS_BUILD_DIR` before running `build.sh`.
+  * ELKS build staging goes to `$IA16_EXTERNAL_TESTS/build-elks` (or `$ELKS_BUILD_DIR` if set).  If neither is configured, ELKS stages will error.
+
+### Optional external runtime stages
+
+  * `./build.sh elks-libc` (also builds `elf2elks` and `elksemu` for now)
+  * These stages require an existing ELKS git checkout at `$ELKS_DIR`; `fetch.sh` does not download ELKS by default.
+  * Optional: set `ELKS_TEST_SRC` to a C file for the elksemu smoke test (defaults to `$IA16_EXTERNAL_TESTS/tests/elks-fartext-test.c` if present, else `elks-fartext-test.c` in this directory).
+  * If you *do* want `fetch.sh` to download ELKS and emulator repos, set `IA16_FETCH_ELKS=1` and/or `IA16_FETCH_EMULATORS=1` **and** set `IA16_EXTERNAL_TESTS` (preferred) or `ELKS_DIR`/`REENIGNE_DIR`.
 
 ### Using `redist-ppa.sh`
 

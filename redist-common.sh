@@ -2,6 +2,23 @@
 
 # Functions used by multiple shell scripts.
 
+resolve_elks_dir () {
+  if [ -n "${ELKS_DIR:-}" ]; then
+    return 0
+  fi
+  if [ -n "${IA16_EXTERNAL_TESTS:-}" ]; then
+    if [ -d "$IA16_EXTERNAL_TESTS/external/elks" ]; then
+      ELKS_DIR="$IA16_EXTERNAL_TESTS/external/elks"
+    elif [ -d "$IA16_EXTERNAL_TESTS/external/elks-tkchia" ]; then
+      ELKS_DIR="$IA16_EXTERNAL_TESTS/external/elks-tkchia"
+    else
+      ELKS_DIR="$IA16_EXTERNAL_TESTS/external/elks"
+    fi
+    return 0
+  fi
+  return 1
+}
+
 decide_binutils_ver_and_dirs () {
   # $bu_uver is the GNU upstream version number, and $bu_date is our
   # (downstream) commit date.  $bu_dir is the downstream directory name
@@ -86,15 +103,16 @@ decide_newlib_ver_and_dirs () {
 decide_elks_libc_ver_and_dirs () {
   decide_binutils_ver_and_dirs "$1"
   decide_gcc_ver_and_dirs "$1"
-  el_uver1="`cat elks/elks/Makefile* | sed -n \
+  resolve_elks_dir || { echo "ELKS_DIR not set; cannot version elks-libc"; return 1; }
+  el_uver1="`cat "$ELKS_DIR"/elks/Makefile* | sed -n \
     "/^VERSION[ \t]*=/ { s/^.*=[ \t]*//; s/#.*$//; s/[ \t]*$//; p; q; }" || :`"
-  el_uver2="`cat elks/elks/Makefile* | sed -n \
+  el_uver2="`cat "$ELKS_DIR"/elks/Makefile* | sed -n \
     "/^PATCHLEVEL[ \t]*=/ { s/^.*=[ \t]*//; s/#.*$//; s/[ \t]*$//; p; q; }" \
     || :`"
-  el_uver3="`cat elks/elks/Makefile* | sed -n \
+  el_uver3="`cat "$ELKS_DIR"/elks/Makefile* | sed -n \
     "/^SUBLEVEL[ \t]*=/ { s/^.*=[ \t]*//; s/#.*$//; s/[ \t]*$//; p; q; }" \
     || :`"
-  el_uver4="`cat elks/elks/Makefile* | sed -n \
+  el_uver4="`cat "$ELKS_DIR"/elks/Makefile* | sed -n \
     "/^PRE[ \t]*=/ { s/^.*=[ \t]*//; s/#.*$//; s/[ \t]*$//; p; q; }" \
     || :`"
   el_uver="$el_uver1"
@@ -106,7 +124,7 @@ decide_elks_libc_ver_and_dirs () {
   if [ -n "$el_uver4" ] && [ 0 != "$el_uver4" ]; then
     el_uver="$el_uver~pre$el_uver4"
   fi
-  el_date="`cd elks && git log -n1 --oneline --date=iso-strict-local \
+  el_date="`cd "$ELKS_DIR" && git log -n1 --oneline --date=iso-strict-local \
     --format='%ad' | sed 's/-//g; s/\(:.\).:.*$/\1/; s/[T:]/./g'`"
   [ -n "$el_uver" -a -n "$el_date" ]
   # Include the GCC and binutils versions inside the elks-libc version.
@@ -125,6 +143,7 @@ decide_elks_libc_ver_and_dirs () {
 
 decide_elksemu_ver_and_dirs () {
   # Use the ELKS version number rather than elks-libc's...
+  resolve_elks_dir || { echo "ELKS_DIR not set; cannot version elksemu"; return 1; }
   ee_uver="`awk 'BEGIN { v = p = s = q = 0; FS = "[ \t]*[=#][ \t]*" }
 		 /^VERSION[ \t]*=/ { v = $2 }
 		 /^PATCHLEVEL[ \t]*=/ { p = $2 }
@@ -132,11 +151,11 @@ decide_elksemu_ver_and_dirs () {
 		 /^PRE[ \t]*=/ { q = $2 }
 		 END { if (q > 0) print v "." p "." s "~pre" q; else
 				  print v "." p "." s }' \
-	      elks/elks/Makefile-rules || :`"
+	      "$ELKS_DIR"/elks/Makefile-rules || :`"
   if [ 0.6.0 = "$ee_uver" ]; then
     ee_uver=0.6.0.0
   fi
-  ee_date="`cd elks && git log -n1 --oneline --date=iso-strict-local \
+  ee_date="`cd "$ELKS_DIR" && git log -n1 --oneline --date=iso-strict-local \
     --format='%ad' | sed 's/-//g; s/\(:.\).:.*$/\1/; s/[T:]/./g'`"
   [ -n "$ee_uver" -a -n "$ee_date" ]
   ee_ver="$ee_uver"-"$ee_date"

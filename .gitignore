@@ -1,1 +1,13 @@
 *~
+
+# Local build artifacts
+/build/
+/build-*/
+/prefix/
+/prefix-*/
+
+# Downloaded archives / extracted deps
+/*.tar.gz
+/*.tar.bz2
+/*.tar.xz
+/*.zip

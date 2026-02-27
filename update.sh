@@ -11,19 +11,49 @@ do_banner () {
 
 do_git_pull () {
     name="$1"
-    if [ -d "$name" ]; then
+    path="${2:-$name}"
+    if [ -d "$path" ]; then
       do_banner "Trying to pull updates from $name Git repository"
-      (cd "$name" && git pull)
+      (cd "$path" && git pull)
     else
       do_banner "No existing $name tree, not updating"
     fi
 }
 
+if [ -n "${ELKS_DIR:-}" ]; then
+  ELKS_DIR="$ELKS_DIR"
+elif [ -n "${IA16_EXTERNAL_TESTS:-}" ]; then
+  if [ -d "$IA16_EXTERNAL_TESTS/external/elks" ]; then
+    ELKS_DIR="$IA16_EXTERNAL_TESTS/external/elks"
+  elif [ -d "$IA16_EXTERNAL_TESTS/external/elks-tkchia" ]; then
+    ELKS_DIR="$IA16_EXTERNAL_TESTS/external/elks-tkchia"
+  else
+    ELKS_DIR="$IA16_EXTERNAL_TESTS/external/elks"
+  fi
+fi
+if [ -n "${REENIGNE_DIR:-}" ]; then
+  REENIGNE_DIR="$REENIGNE_DIR"
+elif [ -n "${IA16_EXTERNAL_TESTS:-}" ]; then
+  REENIGNE_DIR="$IA16_EXTERNAL_TESTS/emulators/reenigne"
+fi
+
 do_git_pull gcc-ia16
 do_git_pull newlib-ia16
 do_git_pull binutils-ia16
-do_git_pull reenigne
-do_git_pull elks
+if [ "${IA16_UPDATE_EMULATORS:-0}" = "1" ]; then
+  if [ -n "${REENIGNE_DIR:-}" ]; then
+    do_git_pull reenigne "$REENIGNE_DIR"
+  else
+    do_git_pull reenigne
+  fi
+else
+  do_banner "Skipping reenigne update (set IA16_UPDATE_EMULATORS=1 to enable)"
+fi
+if [ "${IA16_UPDATE_ELKS:-0}" = "1" ]; then
+  do_git_pull elks "$ELKS_DIR"
+else
+  do_banner "Skipping ELKS update (set IA16_UPDATE_ELKS=1 to enable)"
+fi
 do_git_pull causeway
 do_git_pull libi86
 do_git_pull pdcurses

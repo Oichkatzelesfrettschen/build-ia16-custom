@@ -10,9 +10,48 @@ REDIST="$HERE/redist"
 REDIST_PPA="$HERE/redist-ppa"
 REDIST_DJGPP="$HERE/redist-djgpp"
 PARALLEL="-j 4"
+# Optional external runtimes/tests live outside the repo.
+IA16_EXTERNAL_TESTS="${IA16_EXTERNAL_TESTS:-}"
+ELKS_DIR="${ELKS_DIR:-}"
+ELKS_BUILD_DIR="${ELKS_BUILD_DIR:-}"
+ELKS_TEST_SRC="${ELKS_TEST_SRC:-}"
+
+if [ -z "$ELKS_DIR" ] && [ -n "$IA16_EXTERNAL_TESTS" ]; then
+  if [ -d "$IA16_EXTERNAL_TESTS/external/elks" ]; then
+    ELKS_DIR="$IA16_EXTERNAL_TESTS/external/elks"
+  elif [ -d "$IA16_EXTERNAL_TESTS/external/elks-tkchia" ]; then
+    ELKS_DIR="$IA16_EXTERNAL_TESTS/external/elks-tkchia"
+  else
+    ELKS_DIR="$IA16_EXTERNAL_TESTS/external/elks"
+  fi
+fi
+if [ -z "$ELKS_BUILD_DIR" ] && [ -n "$IA16_EXTERNAL_TESTS" ]; then
+  ELKS_BUILD_DIR="$IA16_EXTERNAL_TESTS/build-elks"
+fi
+if [ -z "$ELKS_TEST_SRC" ] && [ -n "$IA16_EXTERNAL_TESTS" ] \
+  && [ -f "$IA16_EXTERNAL_TESTS/tests/elks-fartext-test.c" ]; then
+  ELKS_TEST_SRC="$IA16_EXTERNAL_TESTS/tests/elks-fartext-test.c"
+fi
+if [ -z "$ELKS_TEST_SRC" ] && [ -f "$HERE/elks-fartext-test.c" ]; then
+  ELKS_TEST_SRC="$HERE/elks-fartext-test.c"
+fi
+
+export IA16_EXTERNAL_TESTS
+export ELKS_DIR
+export ELKS_BUILD_DIR
+export ELKS_TEST_SRC
 #PARALLEL=""
-# Suppress -Werror, to prevent certain harmless conditions from being
-# considered as fatal errors:
+# Werror discipline:
+# Prefer keeping IA16_WERROR=1 (default) and fixing warnings at the source.
+# If you absolutely must unblock a build on a noisy host toolchain, you may set
+# IA16_WERROR=0 to disable -Werror for the relevant configure stages.
+IA16_WERROR="${IA16_WERROR:-1}"
+WERROR_OPT="--enable-werror"
+if [ "$IA16_WERROR" = "0" ]; then
+  WERROR_OPT="--disable-werror"
+fi
+#
+# Historical reasons for disabling -Werror temporarily:
 # (1) Apparently newer versions of glibc, e.g. 2.33, deprecate mallinfo(),
 #     (https://github.com/tkchia/build-ia16/pull/20), and will flag a warning
 #     if it is used.
@@ -20,17 +59,20 @@ PARALLEL="-j 4"
 #     Elf_Word's, and GCC does not like this, since Elf_Word is defined as
 #     `unsigned long' under DJGPP, even though `unsigned long' and
 #     `unsigned' have the same properties under GCC for x86-32.
-BINUTILSOPTS="--enable-ld=default --enable-gold=yes ` \
-	     `--enable-targets=ia16-elf --enable-x86-hpa-segelf=yes ` \
-	     `--disable-werror"
+BINUTILSOPTS="--enable-ld=default --enable-gold=yes \
+  --enable-targets=ia16-elf --enable-x86-hpa-segelf=yes \
+  $WERROR_OPT"
 AUTOTESTPARALLEL="-j4"
 export SHELL=/bin/bash  # make sure subshells, e.g. in `script', are also bash
 
-# Set this to false to disable C++ (speed up build a bit) for Linux and
-# Windows hosts.
-WITHCXX=true
-# Set this to false to disable C++ for DJGPP/MS-DOS.
-WITHCXXDJGPP=false
+# Project policy: always build C/C++ (do not disable C++).
+
+# Host C++ standard discipline:
+# GCC 6.3-era sources predate modern host defaults (e.g. g++15 defaults to
+# gnu++17). Make the host C++ dialect explicit for determinism and to avoid
+# surprising build breaks on newer hosts.
+IA16_HOST_CXXSTD="${IA16_HOST_CXXSTD:--std=gnu++11}"
+export IA16_HOST_CXXSTD
 
 in_list () {
   local needle=$1
@@ -111,13 +153,14 @@ cont_build_log() {
 declare -a BUILDLIST
 BUILDLIST=()
 
-while [ $# -gt 0 ]; do
-  case "$1" in
-    clean|binutils|prereqs|gcc1|newlib|causeway|elks-libc|elf2elks|elksemu|libi86|gcc2|extra|sim|test|debug|binutils-debug|clean-windows|prereqs-windows|binutils-windows|gcc-windows|clean-djgpp|prereqs-djgpp|some-prereqs-djgpp|binutils-djgpp|elf2elks-djgpp|gcc-djgpp|redist-djgpp)
-      BUILDLIST=( "${BUILDLIST[@]}" $1 )
-      ;;
-    all)
-      BUILDLIST=("clean" "binutils" "prereqs" "gcc1" "newlib" "causeway" "elks-libc" "elf2elks" "elksemu" "libi86" "gcc2" "extra" "sim" "test" "debug" "binutils-debug" "clean-windows" "prereqs-windows" "binutils-windows" "gcc-windows" "clean-djgpp" "prereqs-djgpp" "some-prereqs-djgpp" "binutils-djgpp" "elf2elks-djgpp" "gcc-djgpp" "redist-djgpp")
+	while [ $# -gt 0 ]; do
+	  case "$1" in
+	    clean|binutils|prereqs|gcc1|newlib|causeway|elks-libc|elf2elks|elksemu|libi86|gcc2|extra|sim|test|debug|binutils-debug|clean-windows|prereqs-windows|binutils-windows|gcc-windows|clean-djgpp|prereqs-djgpp|some-prereqs-djgpp|binutils-djgpp|elf2elks-djgpp|gcc-djgpp|redist-djgpp|print-config)
+	      BUILDLIST=( "${BUILDLIST[@]}" $1 )
+	      ;;
+	    all)
+      # Keep external runtimes (ELKS/libc/elksemu) out of the default build.
+      BUILDLIST=("clean" "binutils" "prereqs" "gcc1" "newlib" "causeway" "libi86" "gcc2" "extra" "sim" "test" "debug" "binutils-debug" "clean-windows" "prereqs-windows" "binutils-windows" "gcc-windows" "clean-djgpp" "prereqs-djgpp" "some-prereqs-djgpp" "binutils-djgpp" "elf2elks-djgpp" "gcc-djgpp" "redist-djgpp")
       ;;
     *)
       echo "Unknown option '$1'."
@@ -127,36 +170,31 @@ while [ $# -gt 0 ]; do
   shift
 done
 
-if [ "${#BUILDLIST}" -eq 0 ]; then
-  echo "build options: clean binutils prereqs gcc1 newlib causeway elks-libc elf2elks elksemu libi86 gcc2 extra sim test debug binutils-debug all clean-windows prereqs-windows binutils-windows gcc-windows clean-djgpp prereqs-djgpp some-prereqs-djgpp binutils-djgpp elf2elks-djgpp gcc-djgpp redist-djgpp"
-  exit 1
-fi
+	if [ "${#BUILDLIST}" -eq 0 ]; then
+	  echo "build options: clean binutils prereqs gcc1 newlib causeway elks-libc elf2elks elksemu libi86 gcc2 extra sim test debug binutils-debug all clean-windows prereqs-windows binutils-windows gcc-windows clean-djgpp prereqs-djgpp some-prereqs-djgpp binutils-djgpp elf2elks-djgpp gcc-djgpp redist-djgpp print-config"
+	  exit 1
+	fi
 
-if $WITHCXX; then
-  LANGUAGES="c,c++"
-  # Remember to sync this with ppa-pkging/build2/rules !
-  #
-  # Exclude the "dual ABI" backward compatibility stuff --- including it makes
-  # it harder than it already is to fit the text section into 64 KiB.
-  #
-  # Also disable the use of external template instantiations.  The default
-  # instantiations in libstdc++-v3/src/ are too coarse-grained --- e.g. 
-  # libstdc++-v3/src/c++11/istream-inst.cc instantiates both std::istream
-  # and std::wistream (!), _and_ also throws in several <iomanip>
-  # manipulators for good measure (!!).  If we disable these, then each
-  # module in a user's program will only instantiate those functions that
-  # the program really needs.  The trade-off is that the intermediate object
-  # files may be larger and duplicate code (which should be merged at link
-  # time).
-  #
-  # And, disable verbose std::terminate () error messages, which require quite
-  # a hefty amount of code to handle.
-  EXTRABUILD2OPTS="--with-newlib --disable-libstdcxx-dual-abi ` \
-    `--disable-extern-template --disable-wchar_t --disable-libstdcxx-verbose"
-else
-  LANGUAGES="c"
-  EXTRABUILD2OPTS=
-fi
+LANGUAGES="c,c++"
+# Remember to sync this with ppa-pkging/build2/rules !
+#
+# Exclude the "dual ABI" backward compatibility stuff --- including it makes
+# it harder than it already is to fit the text section into 64 KiB.
+#
+# Also disable the use of external template instantiations.  The default
+# instantiations in libstdc++-v3/src/ are too coarse-grained --- e.g.
+# libstdc++-v3/src/c++11/istream-inst.cc instantiates both std::istream
+# and std::wistream (!), _and_ also throws in several <iomanip>
+# manipulators for good measure (!!).  If we disable these, then each
+# module in a user's program will only instantiate those functions that
+# the program really needs.  The trade-off is that the intermediate object
+# files may be larger and duplicate code (which should be merged at link
+# time).
+#
+# And, disable verbose std::terminate () error messages, which require quite
+# a hefty amount of code to handle.
+EXTRABUILD2OPTS="--with-newlib --disable-libstdcxx-dual-abi \
+  --disable-extern-template --disable-wchar_t --disable-libstdcxx-verbose"
 
 # The i586-pc-msdosdjgpp-gcc (Linux → DOS 32-bit DPMI) toolchain targets the
 # Pentium (i586) by default.  Add compiler flags to get it to target the
@@ -164,16 +202,20 @@ fi
 CFLAGSDJGPP="-march=i386 -O2"
 CXXFLAGSDJGPP="-march=i386 -O2"
 EXTRABUILDOPTSDJGPP=("CFLAGS=$CFLAGSDJGPP" "CXXFLAGS=$CXXFLAGSDJGPP")
-# And...
-if $WITHCXXDJGPP; then
-  LANGUAGESDJGPP="c,c++"
-  EXTRABUILD2OPTSDJGPP=( \
-    "${EXTRABUILDOPTSDJGPP[@]}" "--with-newlib" \
-    "--disable-libstdcxx-dual-abi" "--disable-extern-template" \
-    "--disable-wchar_t" "--disable-libstdcxx-verbose")
-else
-  LANGUAGESDJGPP="c"
-  EXTRABUILD2OPTSDJGPP=("${EXTRABUILDOPTSDJGPP[@]}")
+LANGUAGESDJGPP="c,c++"
+EXTRABUILD2OPTSDJGPP=( \
+  "${EXTRABUILDOPTSDJGPP[@]}" "--with-newlib" \
+  "--disable-libstdcxx-dual-abi" "--disable-extern-template" \
+  "--disable-wchar_t" "--disable-libstdcxx-verbose")
+
+if in_list print-config BUILDLIST; then
+  echo "IA16_EXTERNAL_TESTS=$IA16_EXTERNAL_TESTS"
+  echo "ELKS_DIR=$ELKS_DIR"
+  echo "ELKS_BUILD_DIR=$ELKS_BUILD_DIR"
+  echo "ELKS_TEST_SRC=$ELKS_TEST_SRC"
+  echo "LANGUAGES=$LANGUAGES"
+  echo "LANGUAGESDJGPP=$LANGUAGESDJGPP"
+  exit 0
 fi
 
 BIN=$HERE/prefix/bin
@@ -189,10 +231,10 @@ fi
 
 cd "$HERE"
 
-if in_list clean BUILDLIST; then
-  echo
-  echo "************"
-  echo "* Cleaning *"
+	if in_list clean BUILDLIST; then
+	  echo
+	  echo "************"
+	  echo "* Cleaning *"
   echo "************"
   echo
   rm -rf "$PREFIX" "$PREFIX"-* "$REDIST" "$REDIST_PPA" "$REDIST_DJGPP" \
@@ -398,7 +440,10 @@ if in_list gcc1 BUILDLIST; then
   rm -rf build
   mkdir build
   pushd build
+  CXXFLAGS="${CXXFLAGS:-} $IA16_HOST_CXXSTD" \
+  CXXFLAGS_FOR_BUILD="${CXXFLAGS_FOR_BUILD:-} $IA16_HOST_CXXSTD" \
   ../gcc-ia16/configure --target=ia16-elf --prefix="$PREFIX" \
+    --enable-sjlj-exceptions \
     --without-headers --with-newlib --enable-languages=c --disable-libssp \
     --disable-libquadmath --disable-libstdcxx \
     --with-gmp="$PREFIX-gmp" --with-mpc="$PREFIX-mpc" \
@@ -451,7 +496,7 @@ if in_list newlib BUILDLIST; then
   rm -rf build-newlib
   mkdir build-newlib
   pushd build-newlib
-  CFLAGS_FOR_TARGET='-g -Os -D_IEEE_LIBM ' \
+  CFLAGS_FOR_TARGET='-g0 -Os -D_IEEE_LIBM ' \
     ../newlib-ia16/configure --target=ia16-elf --prefix="$PREFIX" \
       --enable-newlib-elix-level=2 --disable-elks-libc --disable-freestanding \
       --disable-newlib-wide-orient --enable-newlib-nano-malloc \
@@ -503,8 +548,16 @@ if either_or_or_in_list elks-libc elf2elks elksemu BUILDLIST; then
   #
   # The ELKS source tree is not downloaded on default by fetch.sh, since it
   # is quite big and we may not always need it.  -- tkchia 20190426
-  [ -f elks/.git/config ] || \
-    git clone -b tkchia/devel https://gitlab.com/tkchia/elks.git
+  if [ -z "${ELKS_DIR:-}" ] || [ -z "${ELKS_BUILD_DIR:-}" ]; then
+    echo "ELKS build requested but ELKS_DIR/ELKS_BUILD_DIR not configured."
+    echo "Set IA16_EXTERNAL_TESTS (recommended) or ELKS_DIR + ELKS_BUILD_DIR."
+    exit 1
+  fi
+  if [ ! -f "$ELKS_DIR/.git/config" ]; then
+    echo "ELKS source tree not found (expected a git checkout): $ELKS_DIR"
+    echo "Install it under \"$IA16_EXTERNAL_TESTS/external/elks\" or set ELKS_DIR."
+    exit 1
+  fi
   if obsolete_multilibs_installed; then
     echo 'Please rebuild gcc1 and newlib.'
     exit 1
@@ -518,11 +571,11 @@ if either_or_or_in_list elks-libc elf2elks elksemu BUILDLIST; then
   #
   # Copy the working tree versions of the files, not the committed versions.
   #	-- tkchia 20200227
-  rm -rf build-elks
-  mkdir build-elks
-  (cd elks && find . \! -type d -print0 | xargs -0 git ls-files --) | \
-    xargs -d '\n' tar cvf - -C elks | tar xvf - -C build-elks
-  pushd build-elks
+  rm -rf "$ELKS_BUILD_DIR"
+  mkdir -p "$ELKS_BUILD_DIR"
+  (cd "$ELKS_DIR" && find . \! -type d -print0 | xargs -0 git ls-files --) | \
+    xargs -d '\n' tar cvf - -C "$ELKS_DIR" | tar xvf - -C "$ELKS_BUILD_DIR"
+  pushd "$ELKS_BUILD_DIR"
   mkdir -p cross include
   start_build_log ". env.sh && make defconfig"
   cont_build_log ". env.sh && cd elks/tools/elf2elks && make doclean"
@@ -557,17 +610,22 @@ if either_or_or_in_list elks-libc elf2elks elksemu BUILDLIST; then
   else
     SKIPELKSEMUTEST=true
   fi
-  for mm in '' -mcmodel=medium; do
-    for abi in '' -mrtd -mregparmcall; do
-      for opt in -Os -O2 -O0; do
-	for extra in '' -finstrument-functions-simple; do
-	  ia16-elf-gcc -melks $mm $abi $opt $extra -o elks-fartext-test \
-	    -Wl,-Map=elks-fartext-test.map "$HERE"/elks-fartext-test.c
-	  $SKIPELKSEMUTEST || elksemu/elksemu ./elks-fartext-test
+  if [ -z "${ELKS_TEST_SRC:-}" ] || [ ! -f "$ELKS_TEST_SRC" ]; then
+    echo "Skipping ELKS application compile/run smoke test:"
+    echo "  ELKS_TEST_SRC is unset or missing: ${ELKS_TEST_SRC:-<unset>}"
+  else
+    for mm in '' -mcmodel=medium; do
+      for abi in '' -mrtd -mregparmcall; do
+	for opt in -Os -O2 -O0; do
+	  for extra in '' -finstrument-functions-simple; do
+	    ia16-elf-gcc -melks $mm $abi $opt $extra -o elks-fartext-test \
+	      -Wl,-Map=elks-fartext-test.map "$ELKS_TEST_SRC"
+	    $SKIPELKSEMUTEST || elksemu/elksemu ./elks-fartext-test
+	  done
 	done
       done
     done
-  done
+  fi
   popd
 fi
 
@@ -606,7 +664,7 @@ if in_list libi86 BUILDLIST; then
     (cd ../libi86 && ./autogen.sh)
   fi
   # Enable ELKS multilibs only if we have downloaded ELKS.
-  if [ -f ../elks/.git/config ]; then
+  if [ -n "$ELKS_DIR" ] && [ -f "$ELKS_DIR/.git/config" ]; then
     start_build_log "../libi86/configure --prefix='$PREFIX' --enable-elks-libc"
   else
     start_build_log "../libi86/configure --prefix='$PREFIX'"
@@ -640,7 +698,10 @@ if in_list gcc2 BUILDLIST; then
   rm -rf build2
   mkdir build2
   pushd build2
+  CXXFLAGS="${CXXFLAGS:-} $IA16_HOST_CXXSTD" \
+  CXXFLAGS_FOR_BUILD="${CXXFLAGS_FOR_BUILD:-} $IA16_HOST_CXXSTD" \
   ../gcc-ia16/configure --target=ia16-elf --prefix="$PREFIX" --enable-libssp \
+    --enable-sjlj-exceptions \
     --enable-languages=$LANGUAGES $EXTRABUILD2OPTS --disable-libquadmath \
     --with-gmp="$PREFIX-gmp" --with-mpc="$PREFIX-mpc" \
     --with-mpfr="$PREFIX-mpfr" --with-isl="$PREFIX-isl" 2>&1 | tee build.log
@@ -766,10 +827,14 @@ if in_list debug BUILDLIST; then
   rm -rf build-debug
   mkdir build-debug
   pushd build-debug
+  CXXFLAGS="${CXXFLAGS:-} $IA16_HOST_CXXSTD" \
+  CXXFLAGS_FOR_BUILD="${CXXFLAGS_FOR_BUILD:-} $IA16_HOST_CXXSTD" \
   ../gcc-ia16/configure --target=ia16-elf --prefix="$PREFIX" --enable-libssp \
+    --enable-sjlj-exceptions \
     --enable-languages=$LANGUAGES --with-as="$PREFIX/bin/ia16-elf-as" \
     --disable-libquadmath $EXTRABUILD2OPTS 2>&1 | tee build.log
-  make $PARALLEL 'CFLAGS=-g -O0' 'CXXFLAGS=-g -O0' 'BOOT_CFLAGS=-g -O0' 2>&1 | tee -a build.log
+  make $PARALLEL 'CFLAGS=-g -O0' "CXXFLAGS=-g -O0 $IA16_HOST_CXXSTD" \
+    'BOOT_CFLAGS=-g -O0' 2>&1 | tee -a build.log
   popd
 fi
 
@@ -853,12 +918,16 @@ if in_list gcc-windows BUILDLIST; then
   pushd build-windows
   OLDPATH=$PATH
   export PATH=$PREFIX-windows/bin:$PATH
+  CXXFLAGS="${CXXFLAGS:-} $IA16_HOST_CXXSTD" \
+  CXXFLAGS_FOR_BUILD="${CXXFLAGS_FOR_BUILD:-} $IA16_HOST_CXXSTD" \
   ../gcc-ia16/configure --host=i686-w64-mingw32 --target=ia16-elf \
+    --enable-sjlj-exceptions \
     --prefix="$PREFIX" --enable-libssp --enable-languages=$LANGUAGES \
     --disable-libquadmath --with-gmp="$PREFIX-prereqs" \
     --with-mpfr="$PREFIX-prereqs" --with-mpc="$PREFIX-prereqs" \
     $EXTRABUILD2OPTS --with-isl="$PREFIX-prereqs" 2>&1 | tee build.log
-  make $PARALLEL 'CFLAGS=-s -O2' 'CXXFLAGS=-s -O2' 'BOOT_CFLAGS=-s -O2' 2>&1 | tee -a build.log
+  make $PARALLEL 'CFLAGS=-s -O2' "CXXFLAGS=-s -O2 $IA16_HOST_CXXSTD" \
+    'BOOT_CFLAGS=-s -O2' 2>&1 | tee -a build.log
   make $PARALLEL install prefix=$PREFIX-windows 2>&1 | tee -a build.log
   export PATH=$OLDPATH
   popd
@@ -979,8 +1048,8 @@ if either_in_list prereqs-djgpp some-prereqs-djgpp BUILDLIST; then
   # (due to `-nostdinc').  For DJGPP, we also need to copy <stdint-gcc.h> to
   # the elks-libc include directories as <stdint.h>.  FIXME: remove the need
   # for these hacks.
-  if [ -f elks/.git/config ]; then
-    pushd build-elks
+  if [ -n "$ELKS_DIR" ] && [ -n "$ELKS_BUILD_DIR" ] && [ -f "$ELKS_DIR/.git/config" ]; then
+    pushd "$ELKS_BUILD_DIR"
     (. env.sh \
      && cd libc \
      && make -j4 DESTDIR="$PREFIX-djgpp-elkslibc" install)
@@ -1002,8 +1071,7 @@ if either_in_list prereqs-djgpp some-prereqs-djgpp BUILDLIST; then
 	 "$($PREFIX/bin/ia16-elf-gcc -print-file-name=include/stdarg.h)" \
 	 "$PREFIX-djgpp-elkslibc"/ia16-elf/lib/elkslibc/"$multidir"/include/
       cp "$($PREFIX/bin/ia16-elf-gcc -print-file-name=include/stdint-gcc.h)" \
-	 "$PREFIX-djgpp-elkslibc"/ia16-elf/lib/elkslibc/"$multidir"/include/`\
-	 `stdint.h
+	 "$PREFIX-djgpp-elkslibc"/ia16-elf/lib/elkslibc/"$multidir"/include/stdint.h
     done
     cp -lrf "$PREFIX-djgpp-elkslibc"/* "$PREFIX-djgpp"
     popd
@@ -1047,7 +1115,7 @@ if in_list binutils-djgpp BUILDLIST; then
     --localedir="$PREFIX-djgpp"/ia16-elf/locale \
     $BINUTILSOPTS --disable-libctf --disable-gdb --disable-libdecnumber \
     --disable-readline --disable-sim --disable-nls --disable-plugins \
-    --disable-lto --disable-werror "${EXTRABUILDOPTSDJGPP[@]}" 2>&1 \
+    --disable-lto "${EXTRABUILDOPTSDJGPP[@]}" 2>&1 \
     | tee build.log
   # The binutils include a facility to allow `ar' and `ranlib' to be invoked
   # as the same executable, and likewise for `objcopy' and `strip'.  However,
@@ -1114,8 +1182,8 @@ if in_list elf2elks-djgpp BUILDLIST; then
   ensure_prog upx
   rm -rf build-elf2elks-djgpp
   mkdir build-elf2elks-djgpp
-  (cd elks && find . \! -type d -print0 | xargs -0 git ls-files --) | \
-    xargs -d '\n' tar cvf - -C elks | tar xvf - -C build-elf2elks-djgpp
+  (cd "$ELKS_DIR" && find . \! -type d -print0 | xargs -0 git ls-files --) | \
+    xargs -d '\n' tar cvf - -C "$ELKS_DIR" | tar xvf - -C build-elf2elks-djgpp
   pushd build-elf2elks-djgpp
   start_build_log ". env.sh && make defconfig"
   cont_build_log ". env.sh && cd elks/tools/elf2elks && make doclean"
@@ -1149,7 +1217,10 @@ if in_list gcc-djgpp BUILDLIST; then
   #
   # Note: the switch here is --disable-plugin.  The Binutils use
   # --disable-plugins.  (!)
+  CXXFLAGS="${CXXFLAGS:-} $IA16_HOST_CXXSTD" \
+  CXXFLAGS_FOR_BUILD="${CXXFLAGS_FOR_BUILD:-} $IA16_HOST_CXXSTD" \
   ../gcc-ia16/configure --host=i586-pc-msdosdjgpp --target=ia16-elf \
+    --enable-sjlj-exceptions \
     --program-prefix=i16 --with-gcc-major-version-only \
     --prefix="$PREFIX-djgpp" --datadir="$PREFIX-djgpp"/ia16-elf \
     --infodir="$PREFIX-djgpp"/ia16-elf/info \
@@ -1159,12 +1230,10 @@ if in_list gcc-djgpp BUILDLIST; then
     --with-mpfr="$PREFIX-djgpp-prereqs" --with-mpc="$PREFIX-djgpp-prereqs" \
     "${EXTRABUILD2OPTSDJGPP[@]}" --with-isl="$PREFIX-djgpp-prereqs" 2>&1 \
     | tee build.log
-  # `-Wno-narrowing' suppresses this error at configuration time (for now):
-  #	"checking whether byte ordering is bigendian... unknown
-  #	 configure: error: unknown endianness
-  #	 presetting ac_cv_c_bigendian=no (or yes) will help"
+  # Avoid warning suppressions; if DJGPP configure fails on endianness,
+  # preseed ac_cv_c_bigendian as needed in the environment.
   cont_build_log "make $PARALLEL 'CFLAGS=-s -O2' \
-    'CXXFLAGS=-s -O2 -Wno-narrowing' 'BOOT_CFLAGS=-s -O2' 2>&1"
+    'CXXFLAGS=-s -O2 $IA16_HOST_CXXSTD' 'BOOT_CFLAGS=-s -O2' 2>&1"
   cont_build_log "make $PARALLEL install prefix='$PREFIX-djgpp-gcc' \
     datadir='$PREFIX-djgpp-gcc'/ia16-elf \
     infodir='$PREFIX-djgpp-gcc'/ia16-elf/info \

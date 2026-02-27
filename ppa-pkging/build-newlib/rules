@@ -10,7 +10,7 @@ override_dh_update_autotools_config:
 	# Nope, do not touch config.sub or config.guess .
 
 override_dh_auto_configure:
-	CFLAGS_FOR_TARGET='-g -Os -mseparate-code-segment -D_IEEE_LIBM' \
+	CFLAGS_FOR_TARGET='-g0 -Os -mseparate-code-segment -D_IEEE_LIBM' \
 	dh_auto_configure -O--parallel -- --target=ia16-elf \
 	    --enable-newlib-elix-level=2 --disable-elks-libc \
 	    --disable-newlib-wide-orient \
